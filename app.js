@@ -15,7 +15,6 @@ var options = {
 };
 var bodyData;
 
-
 var BearSchema   = new Schema({
     name: String,
     title: String,
