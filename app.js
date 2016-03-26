@@ -23,7 +23,18 @@ var BearSchema   = new Schema({
     number: Number
 });
 
+var SessionApi = new Schema({
+    name: String,
+    title: String,
+    updated_at: { type: Date, default: Date.now },
+    user: {
+        type: Schema.ObjectId,
+        ref: 'users'
+    }
+});
+
 var Bear = mongoose.model('Bear', BearSchema);
+var Session = mongoose.model('Session', SessionApi);
 
 request.get('http://www.pwm.co.il/node/data.json', (error, response, body)=> {
     if (!error && response.statusCode == 200) {
@@ -100,15 +111,30 @@ var todo = new Bear({
     number: 15
 });
 
-todo.save((err)=>{
-    if(err)
-        console.log(err);
-    else
-        console.log(todo);
+app.get('/saveSession', function (req, res) {
+    var session = new Session({
+        name: Math.random().toString(36).substring(7),
+        title: "Cto"
+    });
+    session.save((err)=>{
+        if(err)
+            console.log(err);
+        else
+            console.log(session);
+    });
+    mongoose.model('Session').find((err, session)=>{
+        res.send(session);
+    })
 });
 
-app.get('/bear', function (req, res) {
-    mongoose.model('Bear').find((err, bear)=>{
+app.get('/bla', function (req, res) {
+    mongoose.model('Session').find((err, session)=>{
+        res.send(session);
+    })
+});
+
+app.get('/session/:userName', function (req, res) {
+    mongoose.model('Session').find({name:req.params.userName},(err, bear)=>{
         res.send(bear);
     })
 });
