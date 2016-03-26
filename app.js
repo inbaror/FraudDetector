@@ -1,11 +1,12 @@
 var express = require('express');
 var app = express();
-var http = require('http');
 var request = require('request');
 var _ = require('lodash');
 var nodemailer = require('nodemailer');
 var moment = require('moment');
-var apiUrl = 'https://api.hasoffers.com/Apiv3/json?NetworkId=amazecell&Target=Report&Method=getConversions&NetworkToken=NETnrEYg3AY7fEjr2tHgVzUgkv2p2Z&fields%5B%5D=Stat.advertiser_id&fields%5B%5D=Stat.affiliate_id&fields%5B%5D=Stat.offer_id&fields%5B%5D=Stat.ad_id&fields%5B%5D=Stat.session_ip&fields%5B%5D=Stat.country_code&fields%5B%5D=Stat.session_datetime&groups%5B%5D=Stat.advertiser_id&groups%5B%5D=Stat.affiliate_id&groups%5B%5D=Stat.offer_id&groups%5B%5D=Stat.country_code&data_start=YYYY-MM-DD&data_end=YYYY-MM-DD';
+var mongoose   = require('mongoose');
+mongoose.connect('mongodb://fraud:q1w2e3e3@ds025399.mlab.com:25399/fraud_detector');
+var Schema = mongoose.Schema;
 
 var options = {
     host: 'www.pwm.co.il',
@@ -13,7 +14,18 @@ var options = {
     //path: '/Apiv3/json?NetworkId=amazecell&Target=Report&Method=getConversions&NetworkToken=NETnrEYg3AY7fEjr2tHgVzUgkv2p2Z&fields%5B%5D=Stat.advertiser_id&fields%5B%5D=Stat.affiliate_id&fields%5B%5D=Stat.offer_id&fields%5B%5D=Stat.ad_id&fields%5B%5D=Stat.session_ip&fields%5B%5D=Stat.country_code&fields%5B%5D=Stat.session_datetime&groups%5B%5D=Stat.advertiser_id&groups%5B%5D=Stat.affiliate_id&groups%5B%5D=Stat.offer_id&groups%5B%5D=Stat.country_code&data_start=2016-03-01&data_end=2016-03-03'
 };
 var bodyData;
-request.get('http://www.pwm.co.il/node/data.json', function (error, response, body) {
+
+var BearSchema   = new Schema({
+    name: String,
+    title: String,
+    body: String,
+    update: Boolean,
+    number: Number
+});
+
+var Bear = mongoose.model('Bear', BearSchema);
+
+request.get('http://www.pwm.co.il/node/data.json', (error, response, body)=> {
     if (!error && response.statusCode == 200) {
         bodyData = JSON.parse(body);
         checkSessionIp(bodyData);
@@ -52,40 +64,59 @@ var createMatchIpObj = function(data){
     });
 };
 
-// create reusable transporter object using the default SMTP transport
-var transporter = nodemailer.createTransport({
-    service:'Gmail',
-    auth: {
-        user:'frauddetectorapp@gmail.com',
-        pass:'ioherfij1234'
-    }
-});
-var htmlEmail = '<div style="color:red;font-size:22px">Hello World this is the end of you</div>';
+var sendMailController = ()=>{
+    // create reusable transporter object using the default SMTP transport
+    var transporter = nodemailer.createTransport({
+        service:'Gmail',
+        auth: {
+            user:'frauddetectorapp@gmail.com',
+            pass:'ioherfij1234'
+        }
+    });
+    var htmlEmail = '<div style="color:red;font-size:22px">Hello World this is the end of you</div>';
 // setup e-mail data with unicode symbols
-var mailOptions = {
-    from: '"Fraud Sevice 👥" <orel@pwm.co.il>', // sender address
-    to: 'orel.ohayon@hibob.io', // list of receivers
-    subject: 'Fraud alert ✔', // Subject line
-    text: 'Hello world 🐴', // plaintext body
-    html: htmlEmail // html body
-};
+    var mailOptions = {
+        from: '"Fraud Sevice 👥" <orel@pwm.co.il>', // sender address
+        to: 'orel.ohayon@hibob.io', // list of receivers
+        subject: 'Fraud alert ✔', // Subject line
+        text: 'Hello world 🐴', // plaintext body
+        html: htmlEmail // html body
+    };
 
 // send mail with defined transport object
-transporter.sendMail(mailOptions, function(error, info){
-    if(error){
-        return console.log(error);
-    }
-    console.log('Message sent: ' + info.response);
+    transporter.sendMail(mailOptions, function(error, info){
+        if(error){
+            return console.log(error);
+        }
+        console.log('Message sent: ' + info.response);
+    });
+};
+
+var todo = new Bear({
+    name: "orel",
+    title: "CEO",
+    body: "{value:[{bla:bla},{da:da}]}",
+    update: true,
+    number: 15
+});
+
+todo.save((err)=>{
+    if(err)
+        console.log(err);
+    else
+        console.log(todo);
+});
+
+app.get('/bear', function (req, res) {
+    mongoose.model('Bear').find((err, bear)=>{
+        res.send(bear);
+    })
 });
 
 app.get('/', function (req, res) {
-    res.send('Hello World!');
-});
-
-app.get('/bla', function (req, res) {
     res.send(req + '' + '' + res);
 });
 
-app.listen(3000, function () {
+app.listen(3000, ()=> {
     console.log('Example app listening on port 3000!');
 });
