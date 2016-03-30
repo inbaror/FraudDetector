@@ -8,12 +8,16 @@ var mongoose   = require('mongoose');
 mongoose.connect('mongodb://fraud:q1w2e3e3@ds025399.mlab.com:25399/fraud_detector');
 var Schema = mongoose.Schema;
 
-var options = {
-    host: 'www.pwm.co.il',
-    path: '/node/data.json'
-    //path: '/Apiv3/json?NetworkId=amazecell&Target=Report&Method=getConversions&NetworkToken=NETnrEYg3AY7fEjr2tHgVzUgkv2p2Z&fields%5B%5D=Stat.advertiser_id&fields%5B%5D=Stat.affiliate_id&fields%5B%5D=Stat.offer_id&fields%5B%5D=Stat.ad_id&fields%5B%5D=Stat.session_ip&fields%5B%5D=Stat.country_code&fields%5B%5D=Stat.session_datetime&groups%5B%5D=Stat.advertiser_id&groups%5B%5D=Stat.affiliate_id&groups%5B%5D=Stat.offer_id&groups%5B%5D=Stat.country_code&data_start=2016-03-01&data_end=2016-03-03'
-};
-var bodyData;
+var currentDate = new Date();
+currentDate = moment(currentDate).format('YYYY-MM-DD');
+var conversionsReportUrl = `https://api.hasoffers.com/Apiv3/json?NetworkId=amazecell&Target=Report&Method=getConversions&NetworkToken=NETnrEYg3AY7fEjr2tHgVzUgkv2p2Z&fields%5B%5D=Stat.advertiser_id&fields%5B%5D=Stat.affiliate_id&fields%5B%5D=Stat.offer_id&fields%5B%5D=Stat.ad_id&fields%5B%5D=Stat.session_ip&fields%5B%5D=Stat.country_code&fields%5B%5D=Stat.session_datetime&groups%5B%5D=Stat.advertiser_id&groups%5B%5D=Stat.affiliate_id&groups%5B%5D=Stat.offer_id&groups%5B%5D=Stat.country_code&data_start=${currentDate}&data_end=${currentDate}`;
+var statsReportUrl = `https://api.hasoffers.com/Apiv3/json?NetworkId=amazecell&Target=Report&Method=getStats&NetworkToken=NETnrEYg3AY7fEjr2tHgVzUgkv2p2Z&fields%5B%5D=Stat.affiliate_id&fields%5B%5D=Stat.advertiser_id&fields%5B%5D=Stat.offer_id&fields%5B%5D=Stat.country_code&fields%5B%5D=Stat.gross_ctr&fields%5B%5D=Stat.unique_ctr&groups%5B%5D=Stat.affiliate_id&groups%5B%5D=Stat.advertiser_id&groups%5B%5D=Stat.offer_id&groups%5B%5D=Stat.country_code&data_start=${currentDate}&data_end=${currentDate}`;
+
+// var options = {
+//     host: 'www.pwm.co.il',
+//     path: '/node/data.json'
+//     //path: '/Apiv3/json?NetworkId=amazecell&Target=Report&Method=getConversions&NetworkToken=NETnrEYg3AY7fEjr2tHgVzUgkv2p2Z&fields%5B%5D=Stat.advertiser_id&fields%5B%5D=Stat.affiliate_id&fields%5B%5D=Stat.offer_id&fields%5B%5D=Stat.ad_id&fields%5B%5D=Stat.session_ip&fields%5B%5D=Stat.country_code&fields%5B%5D=Stat.session_datetime&groups%5B%5D=Stat.advertiser_id&groups%5B%5D=Stat.affiliate_id&groups%5B%5D=Stat.offer_id&groups%5B%5D=Stat.country_code&data_start=2016-03-01&data_end=2016-03-03'
+// };
 
 var BearSchema   = new Schema({
     name: String,
@@ -21,6 +25,11 @@ var BearSchema   = new Schema({
     body: String,
     update: Boolean,
     number: Number
+});
+
+var ConversionsReportSchema = new Schema({
+    response: String,
+    createdAt: {type: Date, default: Date.now}
 });
 
 var SessionApi = new Schema({
@@ -36,12 +45,30 @@ var SessionApi = new Schema({
 var Bear = mongoose.model('Bear', BearSchema);
 var Session = mongoose.model('Session', SessionApi);
 
-request.get('http://www.pwm.co.il/node/data.json', (error, response, body)=> {
-    if (!error && response.statusCode == 200) {
-        bodyData = JSON.parse(body);
-        checkSessionIp(bodyData);
-    }
-});
+var conversionsReport = ()=> {
+    this.bodyData = '';
+    this.data = '';
+    var conversionsReportModel = mongoose.model('conversionsReport', ConversionsReportSchema);
+    request.get(conversionsReportUrl, (error, response, body)=> {
+        if (!error && response.statusCode == 200) {
+            this.bodyData = JSON.parse(body);
+            this.getResolved();
+        }
+    });
+    this.getResolved = ()=>{
+        this.data = new conversionsReportModel({
+            response: JSON.stringify(this.bodyData.response.data)
+        });
+        this.data.save((err)=>{
+            if(err)
+                console.log(err);
+            else
+                console.log(session);
+        });
+    };
+};
+
+conversionsReport();
 
 var checkSessionIp = function(data){
     var sessionIpArr = [];
